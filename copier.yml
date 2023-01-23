@@ -1,17 +1,35 @@
-# CONFIGURATION -------------------------
+# CONFIGURATION
 _subdirectory: project
+
 _skip_if_exists:
   - CHANGELOG.md
+
 _tasks:
+  - "{% if pdm_local_hooks %}
+      pdm add --dev
+        autoflake
+        pyupgrade
+        black
+        blacken-docs
+        isort
+        flake8
+        flake8-bugbear
+        pydocstyle[toml]
+        {% if commitizen %}commitizen{% endif %}
+      || true
+    {% else %}
+      true
+    {% endif %}"
+  - pre-commit install -t pre-commit -t commit-msg || true
   - git init
   - pdm install
   - pdm run python tasks/_post_generation.py
   - git add .
 
-# PROMPT --------------------------------
+# PROMPT
 project_name:
   type: str
-  help: Your project name
+  help: Your project name in CamelCase
 
 project_description:
   type: str
@@ -28,24 +46,6 @@ author_email:
 author_username:
   type: str
   help: Your username (e.g. on GitHub)
-
-repository_provider:
-  type: str
-  help: Your repository provider
-  default: github.com
-  choices:
-    - github.com
-    - gitlab.com
-
-repository_namespace:
-  type: str
-  help: Your repository namespace
-  default: "{{ author_username }}"
-
-repository_name:
-  type: str
-  help: Your repository name
-  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
 
 copyright_holder:
   type: str
@@ -101,27 +101,83 @@ copyright_license:
     - The Unlicense
     - zlib License
 
-python_package_distribution_name:
-  type: str
-  help: Your Python package distribution name (for `pip install NAME`)
-  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
-
 python_package_import_name:
   type: str
   help: Your Python package import name (for `import NAME` in Python code)
   default: "{{ project_name|lower|replace('-', '_')|replace(' ', '_') }}"
-
-python_package_command_line_name:
-  type: str
-  help: Your CLI name if any (for use in the shell)
-  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
 
 python_package_requires_python:
   type: str
   help: The python version range your project supports
   default: ">=3.11"
 
+python_package_distribution_name:
+  type: str
+  help: Your Python package distribution name (for `pip install NAME`)
+  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
+
+repository_provider:
+  type: str
+  help: Your repository provider
+  default: github.com
+  choices:
+    - github.com
+    - gitlab.com
+
+repository_namespace:
+  type: str
+  help: Your repository namespace
+  default: "{{ author_username }}"
+
+repository_name:
+  type: str
+  help: Your repository name
+  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
+
+repository_main_branches:
+  default: [main]
+  type: yaml
+  help: Main branches used by your organization (Usually under CI)
+
+repository_protect_branches:
+  default: "{{ repository_main_branches }}"
+  type: yaml
+  help:
+    Protected branches where you will not be able to do direct commits. Set to null to
+    disable. Otherwise, it's an array of strings.
+
+github:
+  default: "{{ repository_provider == 'github.com' }}"
+  type: bool
+  when: "{{ repository_provider == 'github.com' }}"
+  help: Create configurations specific to GitHub? This includes a workflow to check code,
+    issue and PR templates...
+
+commitizen:
+  default: false
+  type: bool
+  help: Use Commitizen to lint commit messages?
+
+build_cli:
+  type: bool
+  help: Will you implement a command line (for use in the shell)
+  default: false
+
+cli_name:
+  type: str
+  help: Your CLI name
+  when: "{{build_cli}}"
+  default: "{{ project_name|lower|replace('_', '-')|replace(' ', '-') }}"
+
 build_doc:
   type: bool
   help: Do you want to include a doc site?
   default: no
+
+pdm_local_hooks:
+  default: false
+  type: bool
+  help: Do you prefer to run local hooks prefixed with `pdm run`?
+
+    In this case, you are supposed to maintain these dependencies locally using `pdm
+    add --dev`. Provides better integration with IDEs and Dependabot.

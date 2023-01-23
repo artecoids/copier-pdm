@@ -7,6 +7,13 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-added-large-files
+    {%- if repository_protected_branches %}
+      - id: no-commit-to-branch
+        args:
+        {%- for branch in repository_protected_branches %}
+          - --branch={{ branch }}
+        {%- endfor %}
+    {%- endif %}
 
   - repo: https://github.com/psf/black
     rev: 22.1.0
